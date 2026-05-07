@@ -15,6 +15,9 @@ export async function runCli(
   if (!Array.isArray(options.commandResults)) {
     throw new TypeError('runCli expected commandResults to be an array')
   }
+  if (options.commandResults.length > 0) {
+    throw new Error('runCli commandResults are not supported by the Task 1 CLI skeleton')
+  }
 
   let stdout = ''
   const write = vi

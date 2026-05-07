@@ -29,7 +29,12 @@ function isDirectExecution(): boolean {
 }
 
 if (isDirectExecution()) {
-  void main(process.argv.slice(2)).then((exitCode) => {
-    process.exitCode = exitCode
-  })
+  void main(process.argv.slice(2))
+    .then((exitCode) => {
+      process.exitCode = exitCode
+    })
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
 }
