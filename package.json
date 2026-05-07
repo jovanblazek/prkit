@@ -4,6 +4,9 @@
   "description": "Simple Node.js TypeScript starter for a future CLI app.",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "prkit": "dist/cli/main.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
@@ -11,6 +14,8 @@
     "lint": "oxlint .",
     "start": "node dist/index.js",
     "test": "vitest run",
+    "test:e2e": "vitest run tests/e2e",
+    "test:unit": "vitest run tests/unit tests/adapters",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
@@ -18,6 +23,13 @@
   "author": "",
   "license": "MIT",
   "packageManager": "pnpm@9.15.9",
+  "dependencies": {
+    "commander": "^14.0.1",
+    "minimatch": "^10.1.1",
+    "prompts": "^2.4.2",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.12"
+  },
   "devDependencies": {
     "@types/node": "^25.6.1",
     "oxlint": "^1.63.0",
