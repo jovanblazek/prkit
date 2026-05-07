@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { fileURLToPath } from 'node:url'
 
 export async function main(argv: string[]): Promise<number> {
   const program = new Command()
@@ -17,4 +18,14 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   return 1
+}
+
+function isDirectExecution(): boolean {
+  return process.argv[1] === fileURLToPath(import.meta.url)
+}
+
+if (isDirectExecution()) {
+  void main(process.argv.slice(2)).then((exitCode) => {
+    process.exitCode = exitCode
+  })
 }
