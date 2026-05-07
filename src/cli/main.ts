@@ -1,4 +1,4 @@
-import { Command } from 'commander'
+import { Command, CommanderError } from 'commander'
 import { fileURLToPath } from 'node:url'
 
 export async function main(argv: string[]): Promise<number> {
@@ -13,8 +13,12 @@ export async function main(argv: string[]): Promise<number> {
 
   try {
     await program.parseAsync(argv, { from: 'user' })
-  } catch {
-    return 1
+  } catch (error) {
+    if (error instanceof CommanderError) {
+      return error.exitCode
+    }
+
+    throw error
   }
 
   return 1

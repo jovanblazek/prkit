@@ -1,7 +1,7 @@
 {
   "name": "prkit",
   "version": "1.0.0",
-  "description": "Simple Node.js TypeScript starter for a future CLI app.",
+  "description": "CLI skeleton for creating pull requests from ticket context.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -9,10 +9,10 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/cli/main.ts",
     "format": "prettier --write .",
     "lint": "oxlint .",
-    "start": "node dist/index.js",
+    "start": "node dist/cli/main.js",
     "test": "vitest run",
     "test:e2e": "vitest run tests/e2e",
     "test:unit": "vitest run tests/unit tests/adapters",

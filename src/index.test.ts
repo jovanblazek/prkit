@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { getHelloWorld } from './index.js'
+import { PrkitError, main } from './index.js'
 
-describe('getHelloWorld', () => {
-  it('returns the hello world message', () => {
-    expect(getHelloWorld()).toBe('Hello, world!')
+describe('index exports', () => {
+  it('re-exports the cli main entrypoint', async () => {
+    await expect(main(['create', '--non-interactive'])).resolves.toBe(1)
+  })
+
+  it('re-exports the core error type', () => {
+    const error = new PrkitError('ENVIRONMENT_ERROR', 'missing repo')
+
+    expect(error.kind).toBe('ENVIRONMENT_ERROR')
+    expect(error.message).toBe('missing repo')
   })
 })

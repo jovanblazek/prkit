@@ -12,6 +12,10 @@ export async function runCli(
   exitCode: number
   stdout: string
 }> {
+  if (!Array.isArray(options.commandResults)) {
+    throw new TypeError('runCli expected commandResults to be an array')
+  }
+
   let stdout = ''
   const write = vi
     .spyOn(process.stdout, 'write')
@@ -25,8 +29,6 @@ export async function runCli(
   const cwd = vi.spyOn(process, 'cwd').mockReturnValue(options.cwd)
 
   try {
-    void options.commandResults
-
     vi.resetModules()
     const entrypoint = await import('../../src/index.js')
 
