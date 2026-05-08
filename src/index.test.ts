@@ -1,10 +1,32 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { PrkitError, main } from './index.js'
+import { PrkitError } from './index.js'
 
 describe('index exports', () => {
   it('re-exports the cli main entrypoint', async () => {
-    await expect(main(['create', '--non-interactive'])).resolves.toBe(1)
+    vi.resetModules()
+    vi.doMock('./pipeline/create-pr.js', () => ({
+      createPr: vi.fn().mockResolvedValue({
+        ok: true,
+        dryRun: true,
+        created: false,
+        ticketId: 'ENG-42',
+        baseBranch: 'main',
+        title: 'ENG-42: Build shared pipeline',
+        reviewers: [],
+      }),
+    }))
+    const stdin = vi.spyOn(process, 'stdin', 'get').mockReturnValue({
+      isTTY: true,
+    } as typeof process.stdin)
+
+    try {
+      const { main } = await import('./index.js')
+      await expect(main(['create', '--non-interactive', '--dry-run'])).resolves.toBe(0)
+    } finally {
+      vi.doUnmock('./pipeline/create-pr.js')
+      stdin.mockRestore()
+    }
   })
 
   it('re-exports the core error type', () => {

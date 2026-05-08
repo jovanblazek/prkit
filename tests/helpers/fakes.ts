@@ -1,8 +1,15 @@
-import { vi } from 'vitest'
+import { PassThrough } from 'node:stream'
+
+import { expect, vi } from 'vitest'
+
+import type { CommandRunner } from '../../src/core/command-runner.js'
 
 export interface RunCliOptions {
   cwd: string
   commandResults: unknown[]
+  createPrResult?: unknown
+  createPrError?: unknown
+  stdin?: string
 }
 
 export async function runCli(
@@ -11,6 +18,7 @@ export async function runCli(
 ): Promise<{
   exitCode: number
   stdout: string
+  createPrCalls: unknown[]
 }> {
   if (!Array.isArray(options.commandResults)) {
     throw new TypeError('runCli expected commandResults to be an array')
@@ -20,6 +28,7 @@ export async function runCli(
   }
 
   let stdout = ''
+  const createPrCalls: unknown[] = []
   const write = vi
     .spyOn(process.stdout, 'write')
     .mockImplementation((chunk: string | Uint8Array) => {
@@ -30,20 +39,92 @@ export async function runCli(
     stdout += `${args.join(' ')}\n`
   })
   const cwd = vi.spyOn(process, 'cwd').mockReturnValue(options.cwd)
+  const stdin = new PassThrough()
+  Object.defineProperty(stdin, 'isTTY', {
+    value: options.stdin === undefined,
+  })
+  if (options.stdin !== undefined) {
+    stdin.end(options.stdin)
+  }
+  const stdinSpy = vi.spyOn(process, 'stdin', 'get').mockReturnValue(
+    stdin as typeof process.stdin,
+  )
 
   try {
     vi.resetModules()
+    if (options.createPrError !== undefined || options.createPrResult !== undefined) {
+      vi.doMock('../../src/pipeline/create-pr.js', () => ({
+        createPr: vi.fn(async (input) => {
+          createPrCalls.push(input)
+          if (options.createPrError !== undefined) {
+            throw options.createPrError
+          }
+
+          return options.createPrResult
+        }),
+      }))
+    }
     const entrypoint = await import('../../src/index.js')
 
     if (typeof entrypoint.main === 'function') {
       const exitCode = await entrypoint.main(argv)
-      return { exitCode, stdout }
+      return { exitCode, stdout, createPrCalls }
     }
 
-    return { exitCode: 0, stdout }
+    return { exitCode: 0, stdout, createPrCalls }
   } finally {
+    vi.doUnmock('../../src/pipeline/create-pr.js')
+    stdinSpy.mockRestore()
     cwd.mockRestore()
     log.mockRestore()
     write.mockRestore()
+  }
+}
+
+export interface FakeCommandResult {
+  stdout?: string
+  stderr?: string
+  exitCode?: number
+}
+
+export interface FakeCommandExpectation extends FakeCommandResult {
+  cwd?: string
+  args: string[]
+}
+
+export function createFakeRunner(
+  expectations: FakeCommandExpectation[],
+): CommandRunner & {
+  calls: Array<{ cwd: string; args: string[]; stdin?: string }>
+  assertComplete(): void
+} {
+  const pending = [...expectations]
+  const calls: Array<{ cwd: string; args: string[]; stdin?: string }> = []
+
+  return {
+    calls,
+    async run(input) {
+      calls.push(input)
+
+      const next = pending.shift()
+      if (!next) {
+        throw new Error(`Unexpected command: ${input.args.join(' ')}`)
+      }
+
+      expect(input.args).toEqual(next.args)
+
+      if (next.cwd !== undefined) {
+        expect(input.cwd).toBe(next.cwd)
+      }
+
+      return {
+        stdout: next.stdout ?? '',
+        stderr: next.stderr ?? '',
+        exitCode: next.exitCode ?? 0,
+      }
+    },
+    assertComplete() {
+      expect(pending).toHaveLength(0)
+    },
   }
 }
