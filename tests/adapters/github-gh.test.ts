@@ -186,7 +186,7 @@ describe('GitHubGhPrProvider', () => {
     ).rejects.toEqual(
       new PrkitError(
         'PROVIDER_ERROR',
-        'failed to create GitHub pull request',
+        'Failed to create GitHub pull request.',
         expect.objectContaining({
           exitCode: 1,
           stderr: 'GraphQL: validation failed',
@@ -229,7 +229,10 @@ describe('GitHubGhPrProvider', () => {
         draft: false,
       }),
     ).rejects.toEqual(
-      new PrkitError('PROVIDER_ERROR', 'received invalid GitHub pull request response'),
+      new PrkitError(
+        'PROVIDER_ERROR',
+        'Received invalid GitHub pull request response.',
+      ),
     )
 
     runner.assertComplete()
@@ -270,7 +273,10 @@ describe('GitHubGhPrProvider', () => {
         draft: false,
       }),
     ).rejects.toEqual(
-      new PrkitError('PROVIDER_ERROR', 'received invalid GitHub pull request response'),
+      new PrkitError(
+        'PROVIDER_ERROR',
+        'Received invalid GitHub pull request response.',
+      ),
     )
 
     runner.assertComplete()
@@ -312,7 +318,10 @@ describe('GitHubGhPrProvider', () => {
         draft: false,
       }),
     ).rejects.toEqual(
-      new PrkitError('PROVIDER_ERROR', 'received invalid GitHub pull request response'),
+      new PrkitError(
+        'PROVIDER_ERROR',
+        'Received invalid GitHub pull request response.',
+      ),
     )
 
     runner.assertComplete()

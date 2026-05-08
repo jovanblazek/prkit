@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { PrkitError } from '../../src/core/errors.js'
 import { runCli } from '../helpers/fakes.js'
 
 describe('interactive cli', () => {
@@ -62,5 +63,27 @@ describe('interactive cli', () => {
     expect(result.exitCode).toBe(1)
     expect(result.stdout).toBe('')
     expect(result.stderr).toContain("error: unknown option '--definitely-not-a-real-flag'")
+  })
+
+  it('shows only the provider message in interactive mode when ticket loading fails', async () => {
+    const result = await runCli(['create'], {
+      cwd: '/repo',
+      commandResults: [],
+      createPrError: new PrkitError(
+        'PROVIDER_ERROR',
+        'Failed to load Linear ticket. Make sure you are authenticated with Linear CLI.',
+        {
+          exitCode: 1,
+          stderr:
+            'Failed to view issue: No API key configured. Set LINEAR_API_KEY.',
+        },
+      ),
+    })
+
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toBe('')
+    expect(result.stdout).toBe(
+      'Failed to load Linear ticket. Make sure you are authenticated with Linear CLI.\n',
+    )
   })
 })

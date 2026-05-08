@@ -1,0 +1,2 @@
+ticketBranchPattern: "^feature/(ENG-\\d+)-"
+baseBranch: main

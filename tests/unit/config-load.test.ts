@@ -96,6 +96,51 @@ describe('loadConfig', () => {
     ).rejects.toThrow(/Invalid config/i)
   })
 
+  it('includes config paths for invalid top-level field values', async () => {
+    await expect(
+      loadConfig({
+        cwd: '/repo',
+        homeDir: '/home/test',
+        readFile: async (filePath) => {
+          if (filePath === '/repo/.prkit.yml') {
+            return [
+              'ticketBranchPattern: 123',
+              'baseBranch: false',
+            ].join('\n')
+          }
+          return null
+        },
+      }),
+    ).rejects.toThrow(
+      /Invalid config: ticketBranchPattern: .*baseBranch: /i,
+    )
+  })
+
+  it('shows a first-run setup message when no config file is found', async () => {
+    await expect(
+      loadConfig({
+        cwd: '/repo',
+        homeDir: '/home/test',
+        readFile: async () => null,
+      }),
+    ).rejects.toThrow(/Missing prkit configuration/i)
+  })
+
+  it('shows a setup example when required top-level config is missing', async () => {
+    await expect(
+      loadConfig({
+        cwd: '/repo',
+        homeDir: '/home/test',
+        readFile: async (filePath) => {
+          if (filePath === '/repo/.prkit.yml') {
+            return 'titleFormat: "{id}: {title}"'
+          }
+          return null
+        },
+      }),
+    ).rejects.toThrow(/Required keys:\n- ticketBranchPattern\n- baseBranch/i)
+  })
+
   it('resolves descriptionTemplatePath relative to the repo config when present', async () => {
     const config = await loadConfig({
       cwd: '/repo',

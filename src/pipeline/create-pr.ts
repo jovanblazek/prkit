@@ -1,8 +1,8 @@
-import { spawn } from 'node:child_process'
 import os from 'node:os'
 
 import { loadConfig } from '../config/load.js'
 import { PrkitError } from '../core/errors.js'
+import { createNodeRunner } from '../core/node-runner.js'
 import { getRepositoryContext } from '../git/repository.js'
 import { isBranchPushed } from '../git/push.js'
 import { GitHubGhPrProvider } from '../pr/github-gh.js'
@@ -12,7 +12,6 @@ import { inferTicketId } from '../resolve/ticket-id.js'
 import { buildTitle } from '../resolve/title.js'
 import { LinearTicketProvider } from '../ticketing/linear.js'
 
-import type { CommandRunner } from '../core/command-runner.js'
 import type { CreatePrSuccessResult } from '../core/types.js'
 import type { PrkitConfig } from '../config/schema.js'
 import type { RepositoryContext } from '../git/repository.js'
@@ -142,10 +141,14 @@ function createDefaultDeps(): CreatePrDeps {
         })
 
         if (result.exitCode !== 0) {
-          throw new PrkitError('ENVIRONMENT_ERROR', 'failed to resolve changed files', {
-            exitCode: result.exitCode,
-            stderr: result.stderr.trim(),
-          })
+          throw new PrkitError(
+            'ENVIRONMENT_ERROR',
+            'Failed to resolve changed files. Make sure base branch exists.',
+            {
+              exitCode: result.exitCode,
+              stderr: result.stderr.trim(),
+            },
+          )
         }
 
         return result.stdout
@@ -164,40 +167,5 @@ function createDefaultDeps(): CreatePrDeps {
     },
     ticketProvider: new LinearTicketProvider(runner),
     prProvider: new GitHubGhPrProvider(runner),
-  }
-}
-
-function createNodeRunner(): CommandRunner {
-  return {
-    run(input) {
-      return new Promise((resolve, reject) => {
-        const child = spawn(input.args[0]!, input.args.slice(1), {
-          cwd: input.cwd,
-          stdio: 'pipe',
-        })
-        let stdout = ''
-        let stderr = ''
-
-        child.stdout.on('data', (chunk) => {
-          stdout += String(chunk)
-        })
-        child.stderr.on('data', (chunk) => {
-          stderr += String(chunk)
-        })
-        child.on('error', reject)
-        child.on('close', (exitCode) => {
-          resolve({
-            stdout,
-            stderr,
-            exitCode: exitCode ?? 1,
-          })
-        })
-
-        if (input.stdin !== undefined) {
-          child.stdin.write(input.stdin)
-        }
-        child.stdin.end()
-      })
-    },
   }
 }

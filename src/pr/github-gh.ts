@@ -19,15 +19,22 @@ export class GitHubGhPrProvider implements PrProvider {
     })
 
     if (result.exitCode !== 0) {
-      throw new PrkitError('PROVIDER_ERROR', 'failed to resolve authenticated GitHub user', {
-        exitCode: result.exitCode,
-        stderr: result.stderr.trim(),
-      })
+      throw new PrkitError(
+        'PROVIDER_ERROR',
+        'Failed to resolve authenticated GitHub user. Make sure you are authenticated with GitHub CLI.\nRun `gh auth login`.',
+        {
+          exitCode: result.exitCode,
+          stderr: result.stderr.trim(),
+        },
+      )
     }
 
     const user = result.stdout.trim()
     if (!isAuthenticatedUser(user)) {
-      throw new PrkitError('PROVIDER_ERROR', 'received invalid authenticated GitHub user')
+      throw new PrkitError(
+        'PROVIDER_ERROR',
+        'received invalid authenticated GitHub user',
+      )
     }
 
     return user
@@ -69,10 +76,14 @@ export class GitHubGhPrProvider implements PrProvider {
     })
 
     if (result.exitCode !== 0) {
-      throw new PrkitError('PROVIDER_ERROR', 'failed to create GitHub pull request', {
-        exitCode: result.exitCode,
-        stderr: result.stderr.trim(),
-      })
+      throw new PrkitError(
+        'PROVIDER_ERROR',
+        'Failed to create GitHub pull request.',
+        {
+          exitCode: result.exitCode,
+          stderr: result.stderr.trim(),
+        },
+      )
     }
 
     const pullRequest = parseCreatePullRequestResponse(result.stdout)
@@ -85,23 +96,33 @@ export class GitHubGhPrProvider implements PrProvider {
   }
 }
 
-function parseCreatePullRequestResponse(stdout: string): GhCreatePullRequestResponse {
+function parseCreatePullRequestResponse(
+  stdout: string,
+): GhCreatePullRequestResponse {
   let parsed: unknown
 
   try {
     parsed = JSON.parse(stdout)
   } catch {
-    throw new PrkitError('PROVIDER_ERROR', 'received invalid GitHub pull request response')
+    throw new PrkitError(
+      'PROVIDER_ERROR',
+      'Received invalid GitHub pull request response.',
+    )
   }
 
   if (!isGhCreatePullRequestResponse(parsed)) {
-    throw new PrkitError('PROVIDER_ERROR', 'received invalid GitHub pull request response')
+    throw new PrkitError(
+      'PROVIDER_ERROR',
+      'Received invalid GitHub pull request response.',
+    )
   }
 
   return parsed
 }
 
-function isGhCreatePullRequestResponse(value: unknown): value is GhCreatePullRequestResponse {
+function isGhCreatePullRequestResponse(
+  value: unknown,
+): value is GhCreatePullRequestResponse {
   if (typeof value !== 'object' || value === null) {
     return false
   }

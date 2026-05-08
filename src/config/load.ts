@@ -9,10 +9,73 @@ import { configSchema, type PrkitConfig } from './schema.js'
 
 const GLOBAL_NAMES = ['config.yml', 'config.yaml']
 const REPO_NAMES = ['.prkit.yml', '.prkit.yaml']
+const REQUIRED_TOP_LEVEL_KEYS = ['ticketBranchPattern', 'baseBranch'] as const
 
 interface LocatedConfigFile {
   path: string
   content: string
+}
+
+function formatIssuePath(pathSegments: PropertyKey[]): string {
+  if (pathSegments.length === 0) {
+    return 'config'
+  }
+
+  return pathSegments
+    .map((segment) =>
+      typeof segment === 'number' ? String(segment) : String(segment),
+    )
+    .join('.')
+}
+
+function formatZodIssue(error: ZodError): string {
+  return error.issues
+    .map((issue) => {
+      if (issue.code === 'unrecognized_keys') {
+        const location =
+          issue.path.length > 0 ? formatIssuePath(issue.path) : 'config'
+        return `${location}: unknown key${issue.keys.length === 1 ? '' : 's'} ${issue.keys.join(', ')}`
+      }
+
+      return `${formatIssuePath(issue.path)}: ${issue.message}`
+    })
+    .join('; ')
+}
+
+function missingConfigMessage(): string {
+  return [
+    'Missing prkit configuration.',
+    '',
+    'Create one of:',
+    '- .prkit.yml',
+    '- .prkit.yaml',
+    '- ~/.config/prkit/config.yml',
+    '- ~/.config/prkit/config.yaml',
+    '',
+    'Required keys:',
+    '- ticketBranchPattern',
+    '- baseBranch',
+    '',
+    'Example:',
+    'ticketBranchPattern: "^feature/(ENG-\\\\d+)-"',
+    'baseBranch: main',
+  ].join('\n')
+}
+
+function isMissingRequiredTopLevelConfig(error: ZodError): boolean {
+  const missingPaths = new Set(
+    error.issues
+      .filter(
+        (issue) =>
+          issue.code === 'invalid_type' &&
+          issue.path.length === 1 &&
+          typeof issue.path[0] === 'string' &&
+          issue.message.includes('received undefined'),
+      )
+      .map((issue) => String(issue.path[0])),
+  )
+
+  return REQUIRED_TOP_LEVEL_KEYS.every((key) => missingPaths.has(key))
 }
 
 export interface LoadConfigInput {
@@ -142,11 +205,17 @@ export async function loadConfig(input: LoadConfigInput): Promise<PrkitConfig> {
     )
   } catch (error) {
     if (error instanceof ZodError) {
+      if (isMissingRequiredTopLevelConfig(error)) {
+        throw new PrkitError('CONFIG_ERROR', missingConfigMessage(), {
+          issues: error.issues,
+        })
+      }
+
       const issue = error.issues[0]
       const message =
         issue?.code === 'unrecognized_keys'
-          ? `Unknown config key: ${issue.keys.join(', ')}`
-          : `Invalid config: ${error.issues.map((entry) => entry.message).join('; ')}`
+          ? formatZodIssue(error)
+          : `Invalid config: ${formatZodIssue(error)}`
 
       throw new PrkitError('CONFIG_ERROR', message, {
         issues: error.issues,

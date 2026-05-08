@@ -27,7 +27,7 @@ async function expectInvalidTicketResponse(stdout: string): Promise<void> {
   const { runner, provider } = createProvider({ stdout })
 
   await expect(provider.getTicket('ENG-123', '/repo')).rejects.toEqual(
-    new PrkitError('PROVIDER_ERROR', 'received invalid Linear ticket response'),
+    new PrkitError('PROVIDER_ERROR', 'Received invalid Linear ticket response.'),
   )
 
   runner.assertComplete()
@@ -59,7 +59,7 @@ describe('LinearTicketProvider', () => {
     await expect(provider.getTicket('ENG-123', '/repo')).rejects.toEqual(
       new PrkitError(
         'PROVIDER_ERROR',
-        'failed to load Linear ticket',
+        'Failed to load Linear ticket. Make sure you are authenticated with Linear CLI.\nSet LINEAR_API_KEY, add api_key to .linear.toml, or run `linear auth login`.',
         expect.objectContaining({
           exitCode: 1,
           stderr: 'Issue not found',
@@ -71,7 +71,13 @@ describe('LinearTicketProvider', () => {
   })
 
   it('fails when linear returns malformed json', async () => {
-    await expectInvalidTicketResponse('{not-json')
+    const { runner, provider } = createProvider({ stdout: '{not-json' })
+
+    await expect(provider.getTicket('ENG-123', '/repo')).rejects.toEqual(
+      new PrkitError('PROVIDER_ERROR', 'Unable to parse Linear ticket response.'),
+    )
+
+    runner.assertComplete()
   })
 
   it('fails when linear omits required ticket fields', async () => {
