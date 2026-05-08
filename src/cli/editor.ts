@@ -2,13 +2,23 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { PrkitError } from '../core/errors.js'
+
+export function resolveEditorCommand(editorCommand?: string): string {
+  return editorCommand ?? process.env.VISUAL ?? process.env.EDITOR ?? 'vi'
+}
 
 export async function editBody(
   initialBody: string,
-  editorCommand = process.env.EDITOR,
+  editorCommand?: string,
 ): Promise<string> {
-  if (!editorCommand) {
-    throw new Error('No editor configured')
+  const resolvedEditorCommand = resolveEditorCommand(editorCommand)
+
+  if (!resolvedEditorCommand) {
+    throw new PrkitError(
+      'ENVIRONMENT_ERROR',
+      'No editor configured. Set the EDITOR environment variable to your preferred editor.',
+    )
   }
 
   const dir = await mkdtemp(path.join(tmpdir(), 'prkit-'))
@@ -17,7 +27,7 @@ export async function editBody(
   await writeFile(file, initialBody, 'utf8')
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(editorCommand, [file], {
+    const child = spawn(resolvedEditorCommand, [file], {
       shell: true,
       stdio: 'inherit',
     })

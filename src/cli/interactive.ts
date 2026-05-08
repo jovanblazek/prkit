@@ -13,13 +13,16 @@ export async function resolveInteractiveOverrides(input: {
   if (
     input.stdin !== undefined ||
     input.overrides.body !== undefined ||
-    input.overrides.bodyFile !== undefined ||
-    !process.env.EDITOR
+    input.overrides.bodyFile !== undefined
   ) {
     return input.overrides
   }
 
-  const body = await editBody('', process.env.EDITOR)
+  if (!(await confirmBodyEdit())) {
+    return input.overrides
+  }
+
+  const body = await editBody('')
 
   return body.trim().length === 0
     ? input.overrides
@@ -41,6 +44,17 @@ export async function previewPullRequest(input: {
     stdin: input.stdin,
     overrides: input.overrides,
   })
+}
+
+export async function confirmBodyEdit(): Promise<boolean> {
+  const response = await prompts({
+    type: 'confirm',
+    name: 'confirmed',
+    message: 'Type PR body?',
+    initial: true,
+  })
+
+  return response.confirmed === true
 }
 
 export async function confirmPullRequest(): Promise<boolean> {

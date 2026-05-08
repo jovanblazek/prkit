@@ -13,6 +13,8 @@ export interface RunCliOptions {
   stdin?: string
   promptReplies?: Array<Record<string, unknown>>
   editorResult?: string
+  editorCommand?: string | undefined
+  visualCommand?: string | undefined
 }
 
 export async function runCli(
@@ -49,6 +51,8 @@ export async function runCli(
     stdout += `${args.join(' ')}\n`
   })
   const cwd = vi.spyOn(process, 'cwd').mockReturnValue(options.cwd)
+  const originalEditor = process.env.EDITOR
+  const originalVisual = process.env.VISUAL
   const stdin = new PassThrough()
   Object.defineProperty(stdin, 'isTTY', {
     value: options.stdin === undefined,
@@ -61,6 +65,16 @@ export async function runCli(
   )
 
   try {
+    if (options.editorCommand === undefined) {
+      delete process.env.EDITOR
+    } else {
+      process.env.EDITOR = options.editorCommand
+    }
+    if (options.visualCommand === undefined) {
+      delete process.env.VISUAL
+    } else {
+      process.env.VISUAL = options.visualCommand
+    }
     vi.resetModules()
     vi.doMock('prompts', () => ({
       default: vi.fn(async (questions: unknown) => {
@@ -69,7 +83,15 @@ export async function runCli(
       }),
     }))
     vi.doMock('../../src/cli/editor.js', () => ({
-      editBody: vi.fn(async () => options.editorResult ?? ''),
+      editBody: vi.fn(async (_initialBody: string, editorCommand?: string) => {
+        const resolvedCommand = editorCommand ?? options.visualCommand ?? options.editorCommand ?? 'vi'
+
+        if (!resolvedCommand) {
+          throw new Error('No editor configured')
+        }
+
+        return options.editorResult ?? ''
+      }),
     }))
     if (
       options.createPrError !== undefined ||
@@ -101,6 +123,16 @@ export async function runCli(
 
     return { exitCode: 0, stdout, stderr, createPrCalls, promptCalls }
   } finally {
+    if (originalEditor === undefined) {
+      delete process.env.EDITOR
+    } else {
+      process.env.EDITOR = originalEditor
+    }
+    if (originalVisual === undefined) {
+      delete process.env.VISUAL
+    } else {
+      process.env.VISUAL = originalVisual
+    }
     vi.doUnmock('prompts')
     vi.doUnmock('../../src/cli/editor.js')
     vi.doUnmock('../../src/pipeline/create-pr.js')
