@@ -17,6 +17,25 @@ describe('resolveBodySource', () => {
     ).toThrow(/Exactly one explicit body source/)
   })
 
+  it('fails when --body and --body-file are both supplied', () => {
+    expect(() =>
+      resolveBodySource({
+        body: 'inline',
+        bodyFile: '/tmp/body.md',
+      }),
+    ).toThrow(/Exactly one explicit body source/)
+  })
+
+  it('fails when all explicit body sources are supplied', () => {
+    expect(() =>
+      resolveBodySource({
+        body: 'inline',
+        bodyFile: '/tmp/body.md',
+        stdin: 'stdin body',
+      }),
+    ).toThrow(/Exactly one explicit body source/)
+  })
+
   it('returns the explicit inline body', () => {
     expect(resolveBodySource({ body: 'inline body' })).toBe('inline body')
   })

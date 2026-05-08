@@ -1,6 +1,6 @@
 import { PrkitError } from '../core/errors.js'
 
-import type { CliErrorShape, CliResult } from '../core/types.js'
+import type { CliErrorShape, CliResult, CreatePrSuccessResult } from '../core/types.js'
 
 export function renderResult(result: CliResult, mode: 'interactive' | 'non-interactive'): string {
   if (mode === 'non-interactive') {
@@ -11,8 +11,24 @@ export function renderResult(result: CliResult, mode: 'interactive' | 'non-inter
     return `${result.error.message}\n`
   }
 
+  if (result.dryRun) {
+    return renderInteractivePreview(result)
+  }
+
   const status = result.dryRun ? 'Dry run ready' : 'Pull request created'
   return `${status}: ${result.title}\n`
+}
+
+export function renderInteractivePreview(result: CreatePrSuccessResult): string {
+  const reviewers = result.reviewers.length > 0 ? result.reviewers.join(', ') : 'none'
+
+  return [
+    `Ticket: ${result.ticketId}`,
+    `Base branch: ${result.baseBranch}`,
+    `Title: ${result.title}`,
+    `Reviewers: ${reviewers}`,
+    '',
+  ].join('\n')
 }
 
 export function renderError(error: unknown): CliErrorShape {

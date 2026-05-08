@@ -1,7 +1,7 @@
 {
   "name": "prkit",
   "version": "1.0.0",
-  "description": "CLI skeleton for creating pull requests from ticket context.",
+  "description": "CLI for creating GitHub pull requests from ticket context.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

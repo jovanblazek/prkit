@@ -13,5 +13,5 @@
     "sourceMap": true,
     "types": ["node", "vitest/importMeta"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }

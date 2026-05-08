@@ -2,13 +2,19 @@ import { Command, CommanderError } from 'commander'
 import { fileURLToPath } from 'node:url'
 
 import { createPr } from '../pipeline/create-pr.js'
-import { renderError, renderResult } from './render.js'
+import { resolveDryRun, resolveMode, resolveOverrides } from './flags.js'
+import {
+  confirmPullRequest,
+  previewPullRequest,
+  resolveInteractiveOverrides,
+} from './interactive.js'
+import { renderError, renderInteractivePreview, renderResult } from './render.js'
 
 export async function main(argv: string[]): Promise<number> {
   const program = new Command()
   const create = new Command('create')
   let exitCode = 1
-  const mode = isNonInteractiveArgv(argv) ? 'non-interactive' : 'interactive'
+  const mode = resolveMode(argv)
 
   program.name('prkit')
   program.exitOverride()
@@ -32,22 +38,43 @@ export async function main(argv: string[]): Promise<number> {
   create.option('--body-file <bodyFile>')
   create.action(async (options) => {
     try {
-      const stdin = await readStdinIfAvailable(mode, {
-        body: options.body,
-        bodyFile: options.bodyFile,
-      })
+      const parsedOverrides = resolveOverrides(options)
+      const stdin = await readStdinIfAvailable(mode, parsedOverrides)
+      const dryRun = resolveDryRun(options)
+      const overrides =
+        mode === 'interactive'
+          ? await resolveInteractiveOverrides({
+              stdin,
+              overrides: parsedOverrides,
+            })
+          : parsedOverrides
+
+      if (mode === 'interactive') {
+        const preview = await previewPullRequest({
+          cwd: process.cwd(),
+          stdin,
+          overrides,
+        })
+
+        process.stdout.write(renderInteractivePreview(preview))
+
+        if (dryRun) {
+          exitCode = 0
+          return
+        }
+
+        if (!(await confirmPullRequest())) {
+          exitCode = 1
+          return
+        }
+      }
+
       const result = await createPr({
         mode,
-        dryRun: Boolean(options.dryRun),
+        dryRun,
         cwd: process.cwd(),
         stdin,
-        overrides: {
-          ticketId: options.ticketId,
-          baseBranch: options.baseBranch,
-          title: options.title,
-          body: options.body,
-          bodyFile: options.bodyFile,
-        },
+        overrides,
       })
 
       process.stdout.write(renderResult(result, mode))
@@ -107,11 +134,6 @@ if (isDirectExecution()) {
       process.exitCode = 1
     })
 }
-
-function isNonInteractiveArgv(argv: string[]): boolean {
-  return argv.includes('--non-interactive')
-}
-
 async function readStdinIfAvailable(
   mode: 'interactive' | 'non-interactive',
   explicitBodySource: {
