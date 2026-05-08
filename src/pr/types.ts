@@ -3,12 +3,11 @@ export interface CreatePullRequestInput {
   title: string
   body: string
   reviewers: string[]
-  assignee?: string
+  assignToCurrentUser?: boolean
   draft?: boolean
 }
 
 export interface PrProvider {
-  getAuthenticatedUser(cwd: string): Promise<string>
   createPullRequest(
     cwd: string,
     input: CreatePullRequestInput,

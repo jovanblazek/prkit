@@ -5,59 +5,7 @@ import { GitHubGhPrProvider } from '../../src/pr/github-gh.js'
 import { createFakeRunner } from '../helpers/fakes.js'
 
 describe('GitHubGhPrProvider', () => {
-  it('reads the authenticated GitHub user', async () => {
-    const runner = createFakeRunner([
-      {
-        cwd: '/repo',
-        args: ['gh', 'api', 'user', '--jq', '.login'],
-        stdout: 'octocat\n',
-      },
-    ])
-
-    const provider = new GitHubGhPrProvider(runner)
-
-    await expect(provider.getAuthenticatedUser('/repo')).resolves.toBe('octocat')
-
-    runner.assertComplete()
-  })
-
-  it('fails when the authenticated GitHub user is blank', async () => {
-    const runner = createFakeRunner([
-      {
-        cwd: '/repo',
-        args: ['gh', 'api', 'user', '--jq', '.login'],
-        stdout: '   \n',
-      },
-    ])
-
-    const provider = new GitHubGhPrProvider(runner)
-
-    await expect(provider.getAuthenticatedUser('/repo')).rejects.toEqual(
-      new PrkitError('PROVIDER_ERROR', 'received invalid authenticated GitHub user'),
-    )
-
-    runner.assertComplete()
-  })
-
-  it('fails when gh returns malformed scalar authenticated user output', async () => {
-    const runner = createFakeRunner([
-      {
-        cwd: '/repo',
-        args: ['gh', 'api', 'user', '--jq', '.login'],
-        stdout: 'null\n',
-      },
-    ])
-
-    const provider = new GitHubGhPrProvider(runner)
-
-    await expect(provider.getAuthenticatedUser('/repo')).rejects.toEqual(
-      new PrkitError('PROVIDER_ERROR', 'received invalid authenticated GitHub user'),
-    )
-
-    runner.assertComplete()
-  })
-
-  it('creates a pull request with optional reviewers assignee and draft flag', async () => {
+  it('creates a pull request with optional reviewers assign-to-self and draft flag', async () => {
     const runner = createFakeRunner([
       {
         cwd: '/repo',
@@ -72,10 +20,20 @@ describe('GitHubGhPrProvider', () => {
           '--body',
           'Implements Task 5.',
           '--assignee',
-          'octocat',
+          '@me',
           '--reviewer',
           'alice,bob',
           '--draft',
+        ],
+        stdout: 'https://github.com/org/repo/pull/42\n',
+      },
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'view',
+          'https://github.com/org/repo/pull/42',
           '--json',
           'number,url,id',
         ],
@@ -94,7 +52,7 @@ describe('GitHubGhPrProvider', () => {
         baseBranch: 'main',
         title: 'feat: add provider adapters',
         body: 'Implements Task 5.',
-        assignee: 'octocat',
+        assignToCurrentUser: true,
         reviewers: ['alice', 'bob'],
         draft: true,
       }),
@@ -107,7 +65,7 @@ describe('GitHubGhPrProvider', () => {
     runner.assertComplete()
   })
 
-  it('omits optional create flags when assignee reviewers and draft are unset', async () => {
+  it('omits optional create flags when assign-to-self reviewers and draft are unset', async () => {
     const runner = createFakeRunner([
       {
         cwd: '/repo',
@@ -121,6 +79,16 @@ describe('GitHubGhPrProvider', () => {
           'fix: trim output',
           '--body',
           'Body text',
+        ],
+        stdout: 'https://github.com/org/repo/pull/7\n',
+      },
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'view',
+          'https://github.com/org/repo/pull/7',
           '--json',
           'number,url,id',
         ],
@@ -140,6 +108,7 @@ describe('GitHubGhPrProvider', () => {
         title: 'fix: trim output',
         body: 'Body text',
         reviewers: [],
+        assignToCurrentUser: false,
         draft: false,
       }),
     ).resolves.toEqual({
@@ -165,8 +134,6 @@ describe('GitHubGhPrProvider', () => {
           'feat: add provider adapters',
           '--body',
           'Implements Task 5.',
-          '--json',
-          'number,url,id',
         ],
         stderr: 'GraphQL: validation failed\n',
         exitCode: 1,
@@ -181,6 +148,7 @@ describe('GitHubGhPrProvider', () => {
         title: 'feat: add provider adapters',
         body: 'Implements Task 5.',
         reviewers: [],
+        assignToCurrentUser: false,
         draft: false,
       }),
     ).rejects.toEqual(
@@ -211,6 +179,16 @@ describe('GitHubGhPrProvider', () => {
           'feat: add provider adapters',
           '--body',
           'Implements Task 5.',
+        ],
+        stdout: 'https://github.com/org/repo/pull/42\n',
+      },
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'view',
+          'https://github.com/org/repo/pull/42',
           '--json',
           'number,url,id',
         ],
@@ -226,6 +204,7 @@ describe('GitHubGhPrProvider', () => {
         title: 'feat: add provider adapters',
         body: 'Implements Task 5.',
         reviewers: [],
+        assignToCurrentUser: false,
         draft: false,
       }),
     ).rejects.toEqual(
@@ -252,6 +231,16 @@ describe('GitHubGhPrProvider', () => {
           'feat: add provider adapters',
           '--body',
           'Implements Task 5.',
+        ],
+        stdout: 'https://github.com/org/repo/pull/42\n',
+      },
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'view',
+          'https://github.com/org/repo/pull/42',
           '--json',
           'number,url,id',
         ],
@@ -270,6 +259,7 @@ describe('GitHubGhPrProvider', () => {
         title: 'feat: add provider adapters',
         body: 'Implements Task 5.',
         reviewers: [],
+        assignToCurrentUser: false,
         draft: false,
       }),
     ).rejects.toEqual(
@@ -296,6 +286,16 @@ describe('GitHubGhPrProvider', () => {
           'feat: add provider adapters',
           '--body',
           'Implements Task 5.',
+        ],
+        stdout: 'https://github.com/org/repo/pull/42\n',
+      },
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'view',
+          'https://github.com/org/repo/pull/42',
           '--json',
           'number,url,id',
         ],
@@ -315,6 +315,47 @@ describe('GitHubGhPrProvider', () => {
         title: 'feat: add provider adapters',
         body: 'Implements Task 5.',
         reviewers: [],
+        assignToCurrentUser: false,
+        draft: false,
+      }),
+    ).rejects.toEqual(
+      new PrkitError(
+        'PROVIDER_ERROR',
+        'Received invalid GitHub pull request response.',
+      ),
+    )
+
+    runner.assertComplete()
+  })
+
+  it('fails when gh pr create does not return a pull request url', async () => {
+    const runner = createFakeRunner([
+      {
+        cwd: '/repo',
+        args: [
+          'gh',
+          'pr',
+          'create',
+          '--base',
+          'main',
+          '--title',
+          'feat: add provider adapters',
+          '--body',
+          'Implements Task 5.',
+        ],
+        stdout: '   \n',
+      },
+    ])
+
+    const provider = new GitHubGhPrProvider(runner)
+
+    await expect(
+      provider.createPullRequest('/repo', {
+        baseBranch: 'main',
+        title: 'feat: add provider adapters',
+        body: 'Implements Task 5.',
+        reviewers: [],
+        assignToCurrentUser: false,
         draft: false,
       }),
     ).rejects.toEqual(

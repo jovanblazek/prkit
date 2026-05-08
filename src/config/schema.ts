@@ -17,7 +17,7 @@ export const configSchema = z
     defaultReviewers: z.array(z.string().min(1)).default([]),
     reviewerRules: z.array(reviewerRuleSchema).default([]),
     draftByDefault: z.boolean().default(false),
-    assignToCurrentUser: z.boolean().default(false),
+    assignToCurrentUser: z.boolean().default(true),
   })
   .strict()
 

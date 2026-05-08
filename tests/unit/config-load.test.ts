@@ -32,7 +32,7 @@ describe('loadConfig', () => {
     expect(config.baseBranch).toBe('develop')
     expect(config.defaultReviewers).toEqual(['alice'])
     expect(config.draftByDefault).toBe(true)
-    expect(config.assignToCurrentUser).toBe(false)
+    expect(config.assignToCurrentUser).toBe(true)
   })
 
   it('fails fast on unknown config fields', async () => {

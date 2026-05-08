@@ -52,7 +52,6 @@ function createPullRequestDeps(overrides: {
       getTicket: async () => ({ id: 'ENG-42', title: 'Build shared pipeline' }),
     },
     prProvider: {
-      getAuthenticatedUser: async () => 'octocat',
       createPullRequest:
         overrides.createPullRequest ??
         (async (_cwd: string, _input: CreatePullRequestInput) =>
@@ -94,7 +93,6 @@ describe('createPr pipeline', () => {
         config: { load: loadConfig },
         ticketProvider: { getTicket },
         prProvider: {
-          getAuthenticatedUser: vi.fn(),
           createPullRequest,
         },
       },
@@ -155,6 +153,66 @@ describe('createPr pipeline', () => {
       title: 'ENG-42: Build shared pipeline',
       body: '',
       reviewers: [],
+      draft: true,
+      assignToCurrentUser: false,
+    })
+  })
+
+  it('passes assignToCurrentUser intent through to the provider when enabled', async () => {
+    const createPullRequest = vi.fn().mockResolvedValue(createPullRequestResult())
+
+    await createPr({
+      mode: 'non-interactive',
+      dryRun: false,
+      cwd: '/repo',
+      overrides: { ticketId: 'ENG-42' },
+      deps: {
+        ...createPullRequestDeps({
+          config: { assignToCurrentUser: true },
+          createPullRequest,
+        }),
+        prProvider: {
+          createPullRequest,
+        },
+      },
+    })
+
+    expect(createPullRequest).toHaveBeenCalledWith('/repo', {
+      baseBranch: 'main',
+      title: 'ENG-42: Build shared pipeline',
+      body: '',
+      reviewers: [],
+      draft: false,
+      assignToCurrentUser: true,
+    })
+  })
+
+  it('passes assignToCurrentUser intent through to the provider when disabled', async () => {
+    const createPullRequest = vi.fn().mockResolvedValue(createPullRequestResult())
+
+    await createPr({
+      mode: 'non-interactive',
+      dryRun: false,
+      cwd: '/repo',
+      overrides: { ticketId: 'ENG-42' },
+      deps: {
+        ...createPullRequestDeps({
+          config: { assignToCurrentUser: false },
+          createPullRequest,
+        }),
+        prProvider: {
+          createPullRequest,
+        },
+      },
+    })
+
+    expect(createPullRequest).toHaveBeenCalledWith('/repo', {
+      baseBranch: 'main',
+      title: 'ENG-42: Build shared pipeline',
+      body: '',
+      reviewers: [],
+      draft: false,
+      assignToCurrentUser: false,
     })
   })
 
@@ -184,7 +242,6 @@ describe('createPr pipeline', () => {
         config: { load },
         ticketProvider: { getTicket },
         prProvider: {
-          getAuthenticatedUser: vi.fn(),
           createPullRequest,
         },
       },
@@ -198,6 +255,8 @@ describe('createPr pipeline', () => {
       title: 'ENG-42: Build shared pipeline',
       body: '',
       reviewers: [],
+      draft: false,
+      assignToCurrentUser: false,
     })
   })
 

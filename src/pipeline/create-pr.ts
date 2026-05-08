@@ -112,6 +112,8 @@ export async function createPr(
     title,
     body,
     reviewers,
+    assignToCurrentUser: config.assignToCurrentUser,
+    draft: config.draftByDefault,
   })
 
   return {
