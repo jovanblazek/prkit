@@ -1,9 +1,5 @@
 import { minimatch } from 'minimatch'
-
-export interface ReviewerRule {
-  pattern: string
-  reviewers: string[]
-}
+import { ReviewerRule } from '../config/schema.js'
 
 export interface ResolveReviewersInput {
   changedFiles: string[]

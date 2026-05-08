@@ -2,24 +2,75 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createPr } from '../../src/pipeline/create-pr.js'
 import { PrkitError } from '../../src/core/errors.js'
+import type { CreatePrDeps } from '../../src/pipeline/create-pr.js'
+import type { CreatePullRequestInput, PrProvider } from '../../src/pr/types.js'
+
+function createRepositoryContext() {
+  return {
+    rootDir: '/repo',
+    branchName: 'feature/ENG-42-add-pipeline',
+    originUrl: 'git@github.com:acme/prkit.git',
+  }
+}
+
+function createConfig(overrides: Record<string, unknown> = {}) {
+  return {
+    ticketProvider: 'linear' as const,
+    ticketBranchPattern: '^feature/(ENG-\\d+)-',
+    baseBranch: 'main',
+    defaultReviewers: [],
+    reviewerRules: [],
+    draftByDefault: false,
+    assignToCurrentUser: false,
+    ...overrides,
+  }
+}
+
+function createPullRequestResult() {
+  return {
+    id: 'PR_kwDOAA',
+    number: 17,
+    url: 'https://github.com/acme/prkit/pull/17',
+  }
+}
+
+function createPullRequestDeps(overrides: {
+  isBranchPushed?: boolean
+  config?: Record<string, unknown>
+  createPullRequest?: PrProvider['createPullRequest']
+} = {}): CreatePrDeps {
+  return {
+    git: {
+      getRepositoryContext: async () => createRepositoryContext(),
+      getChangedFiles: async () => [],
+      isBranchPushed: async () => overrides.isBranchPushed ?? true,
+    },
+    config: {
+      load: async () => createConfig(overrides.config),
+    },
+    ticketProvider: {
+      getTicket: async () => ({ id: 'ENG-42', title: 'Build shared pipeline' }),
+    },
+    prProvider: {
+      getAuthenticatedUser: async () => 'octocat',
+      createPullRequest:
+        overrides.createPullRequest ??
+        (async (_cwd: string, _input: CreatePullRequestInput) =>
+          createPullRequestResult()),
+    },
+  }
+}
 
 describe('createPr pipeline', () => {
   it('returns a dry-run result without remote mutation', async () => {
-    const getRepositoryContext = vi.fn().mockResolvedValue({
-      rootDir: '/repo',
-      branchName: 'feature/ENG-42-add-pipeline',
-      originUrl: 'git@github.com:acme/prkit.git',
-    })
-    const loadConfig = vi.fn().mockResolvedValue({
-      ticketProvider: 'linear',
-      ticketBranchPattern: '^feature/(ENG-\\d+)-',
-      baseBranch: 'main',
-      titleFormat: '{ticketId}: {ticketTitle}',
-      defaultReviewers: ['alice'],
-      reviewerRules: [{ pattern: 'src/pipeline/**', reviewers: ['bob'] }],
-      draftByDefault: false,
-      assignToCurrentUser: false,
-    })
+    const getRepositoryContext = vi.fn().mockResolvedValue(createRepositoryContext())
+    const loadConfig = vi.fn().mockResolvedValue(
+      createConfig({
+        titleFormat: '{ticketId}: {ticketTitle}',
+        defaultReviewers: ['alice'],
+        reviewerRules: [{ pattern: 'src/pipeline/**', reviewers: ['bob'] }],
+      }),
+    )
     const getChangedFiles = vi
       .fn()
       .mockResolvedValue(['src/pipeline/create-pr.ts', 'README.md'])
@@ -79,37 +130,10 @@ describe('createPr pipeline', () => {
       dryRun: false,
       cwd: '/repo',
       overrides: { ticketId: 'ENG-42' },
-      deps: {
-        git: {
-          getRepositoryContext: vi.fn().mockResolvedValue({
-            rootDir: '/repo',
-            branchName: 'feature/ENG-42-add-pipeline',
-            originUrl: 'git@github.com:acme/prkit.git',
-          }),
-          getChangedFiles: vi.fn().mockResolvedValue([]),
-          isBranchPushed: vi.fn().mockResolvedValue(true),
-        },
-        config: {
-          load: vi.fn().mockResolvedValue({
-            ticketProvider: 'linear',
-            ticketBranchPattern: '^feature/(ENG-\\d+)-',
-            baseBranch: 'main',
-            defaultReviewers: [],
-            reviewerRules: [],
-            draftByDefault: true,
-            assignToCurrentUser: false,
-          }),
-        },
-        ticketProvider: {
-          getTicket: vi
-            .fn()
-            .mockResolvedValue({ id: 'ENG-42', title: 'Build shared pipeline' }),
-        },
-        prProvider: {
-          getAuthenticatedUser: vi.fn(),
-          createPullRequest,
-        },
-      },
+      deps: createPullRequestDeps({
+        config: { draftByDefault: true },
+        createPullRequest,
+      }),
     })
 
     expect(result).toEqual({
@@ -144,15 +168,7 @@ describe('createPr pipeline', () => {
       number: 18,
       url: 'https://github.com/acme/prkit/pull/18',
     })
-    const load = vi.fn().mockResolvedValue({
-      ticketProvider: 'linear',
-      ticketBranchPattern: '^feature/(ENG-\\d+)-',
-      baseBranch: 'main',
-      defaultReviewers: [],
-      reviewerRules: [],
-      draftByDefault: false,
-      assignToCurrentUser: false,
-    })
+    const load = vi.fn().mockResolvedValue(createConfig())
 
     await createPr({
       mode: 'non-interactive',
@@ -161,11 +177,7 @@ describe('createPr pipeline', () => {
       overrides: { ticketId: 'ENG-42' },
       deps: {
         git: {
-          getRepositoryContext: vi.fn().mockResolvedValue({
-            rootDir: '/repo',
-            branchName: 'feature/ENG-42-add-pipeline',
-            originUrl: 'git@github.com:acme/prkit.git',
-          }),
+          getRepositoryContext: vi.fn().mockResolvedValue(createRepositoryContext()),
           getChangedFiles,
           isBranchPushed: vi.fn().mockResolvedValue(true),
         },
@@ -196,37 +208,9 @@ describe('createPr pipeline', () => {
         dryRun: false,
         cwd: '/repo',
         overrides: { ticketId: 'ENG-42' },
-        deps: {
-          git: {
-            getRepositoryContext: vi.fn().mockResolvedValue({
-              rootDir: '/repo',
-              branchName: 'feature/ENG-42-add-pipeline',
-              originUrl: 'git@github.com:acme/prkit.git',
-            }),
-            getChangedFiles: vi.fn().mockResolvedValue([]),
-            isBranchPushed: vi.fn().mockResolvedValue(false),
-          },
-          config: {
-            load: vi.fn().mockResolvedValue({
-              ticketProvider: 'linear',
-              ticketBranchPattern: '^feature/(ENG-\\d+)-',
-              baseBranch: 'main',
-              defaultReviewers: [],
-              reviewerRules: [],
-              draftByDefault: false,
-              assignToCurrentUser: false,
-            }),
-          },
-          ticketProvider: {
-            getTicket: vi
-              .fn()
-              .mockResolvedValue({ id: 'ENG-42', title: 'Build shared pipeline' }),
-          },
-          prProvider: {
-            getAuthenticatedUser: vi.fn(),
-            createPullRequest: vi.fn(),
-          },
-        },
+        deps: createPullRequestDeps({
+          isBranchPushed: false,
+        }),
       }),
     ).rejects.toMatchObject(
       new PrkitError(

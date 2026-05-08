@@ -1,9 +1,11 @@
 import { z } from 'zod'
 
-export const reviewerRuleSchema = z.object({
-  pattern: z.string().min(1),
-  reviewers: z.array(z.string().min(1)),
-}).strict()
+const reviewerRuleSchema = z
+  .object({
+    pattern: z.string().min(1),
+    reviewers: z.array(z.string().min(1)),
+  })
+  .strict()
 
 export const configSchema = z
   .object({
